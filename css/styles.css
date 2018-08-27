@@ -426,6 +426,19 @@ nav h1 a {
 	font-weight: bold;
 }
 
+/* offline content */
+  #offlinecontent {
+    padding: 30px;
+    width: 100%;
+    font-size: 1.1em;
+    color: #233;
+    background: #fff;
+  }
+
+  #offlinecontent p a {
+    color: blue;
+  }
+
 /* ====================== Media Queries ====================== */
 /* responsiveness(reduce font-size) for devices below 498px */
 @media screen and (max-width: 498px) {

@@ -1,5 +1,5 @@
-let static_cache='static-v1';
-let dynamic_cache='dynamic-v1';
+let static_cache='static-v2';
+let dynamic_cache='dynamic-v2';
 // Install Service Worker(triggered by browser)
 self.addEventListener("install", event => {
   console.log("sw is installing ...", event);
@@ -10,6 +10,7 @@ self.addEventListener("install", event => {
         cache.addAll([
   				'index.html',
   				'restaurant.html',
+          'offline.html',
   				'/css/styles.css',
   				'/js/dbhelper.js',
   				'/js/main.js',
@@ -69,7 +70,10 @@ self.addEventListener("fetch", event => {
                 })
             })
                 .catch(err => {
-
+                  return caches.open(static_cache)
+                  .then(cache => {
+                    return cache.match("offline.html")
+                  })
                 });
         }
       })
