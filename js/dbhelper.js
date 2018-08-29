@@ -1,3 +1,8 @@
+let dbPromise = idb.open('restaurants-store',1, function(db) {
+if(!db.objectStoreNames.contains('restaurants')) {
+  db.createObjectStore('restaurants', {keyPath: 'id'});
+}
+})
 /**
  * Common database helper functions.
  */
@@ -19,6 +24,7 @@ class DBHelper {
     let fetchURL;
     if (!id) {
       fetchURL = DBHelper.DATABASE_URL;
+      console.log(fetchURL);
     } else {
       fetchURL = DBHelper.DATABASE_URL + "/" + id;
     }
@@ -155,10 +161,7 @@ class DBHelper {
    * Restaurant image URL.
    */
   static imageUrlForRestaurant(restaurant) {
-    if (restaurant.photograph) {
-      return (`/img/${restaurant.photograph}.jpg`);
-    }
-    // return `/img/${restaurant.id}.jpg`
+    return `/img/${restaurant.id}.jpg`;
   }
 
   /**
