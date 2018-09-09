@@ -13,77 +13,16 @@ class DBHelper {
     return `http://localhost:${port}/restaurants`;
   }
 
-  // create idb
-  static createIDB(){
-    // create restaurants idb
-    let dbPromise = idb.open('restaurants-store',1, function(db) {
-    if(!db.objectStoreNames.contains('restaurants')) {
-      db.createObjectStore('restaurants', {keyPath: 'id'});
-    }
-  });
-  return dbPromise;
-  }
-
-  // store restaurants json data in idb.
-  static addToIDB(st,data) {
-      return DBHelper.createIDB()
-          .then((db) => {
-              if (!db) {
-                  return;
-              }
-              const tx = db.transaction(st, 'readwrite');
-              const store = tx.objectStore(st);
-
-              return Promise.all(data.map((item) => {
-                  console.log('adding req,res to indexedDatabase', item);
-                  return store.put(item);
-              }));
-          })
-          .catch((err) => {
-              tx.abort();
-              console.log(err);
-          });
-  }
-
-// read data from idb
-//   static readfromIDB(st){
-//   return DBHelper.createIDB()
-//   .then(db) => {
-//     if (!db) {
-//         return;
-//     }
-//     var tx= db.transaction(st, 'readonly');
-//     var store = tx.objectStore(st);
-//     return store.getAll();
-//   })
-// }
-
   /**
    * Fetch all restaurants.
    */
-  static fetchRestaurants(callback, id) {
-    let fetchURL;
-    if (!id) {
-      fetchURL = DBHelper.DATABASE_URL;
-      console.log(fetchURL);
-    } else {
-      fetchURL = DBHelper.DATABASE_URL + "/" + id;
-    }
-
-
-    fetch(fetchURL, {method : "GET"})
-    .then(res => {
-      res.json()
-      .then(restaurants => {
-        console.log("all restaurants: ", restaurants);
-        DBHelper.addToIDB("restaurants",restaurants);
-        callback(null, restaurants);
-      });
-    })
-    .catch(err => {
-      callback(`${err}`, null);
-    });
-
+  static fetchRestaurants(callback) {
+    fetch(DBHelper.DATABASE_URL)
+      .then(response => {
+        return response.json();
+      })
+      .then(restaurants => callback(null, restaurants))
+      .catch(err => callback(err, null));
   }
 
   /**

@@ -1,5 +1,18 @@
 importScripts('/js/idb.js');
-importScripts('/js/dbhelper.js');
+// importScripts('/js/dbhelper.js');
+
+// open/create idb.
+const dbPromise = idb.open('restaurants-store', 1, upgradeDB => {
+  switch(upgradeDB.oldVersion) {
+    case 0:
+      upgradeDB.createObjectStore(
+        'restaurants',
+        {
+          keyPath: 'id',
+        }
+      );
+  }
+});
 
 let static_cache = 'static-v2';
 let dynamic_cache = 'dynamic-v2';
@@ -55,176 +68,77 @@ self.addEventListener("activate", event => {
   return self.clients.claim();
 });
 
-
-function isInArray(string, array) {
-  var cachePath;
-  if (string.indexOf(self.origin) === 0) {
-    console.log('matched ', string);
-    cachePath = string.substring(self.origin.length); //path: after localhost:8000
-  } else {
-    cachePath = string; //for links, copy full path
-  }
-  return array.indexOf(cachePath) > -1;
+//handle ajax-request, cache json data in idb
+// ajaxurl:
+// locallhost:1337/restaurants/
+// localhost:1337/restaurants/id
+function fromIndexedDB(ajaxurl) {
+  let restaurantId = ajaxurl.pathname.split('/').slice(-1)[0];// get last item(restaurants/id)
+  restaurantId = restaurantId == 'restaurants' ? -1 : restaurantId; //store id
+// read from idb first
+    return dbPromise.then(db => {
+      const tx = db.transaction('restaurants',"readonly");
+      const store = tx.objectStore('restaurants');
+      return store.get(restaurantId)
+      .then(cacheres => {
+        if (cacheres) {
+          return cacheres.data;//return idb data
+        }
+          return fetch(ajaxurl).then(res => {//fetch from network
+          return res.json();
+        }).then(restaurants => {
+            console.log("restaurants data: ",restaurants);//json data
+            dbPromise.then(db => {//store in idb
+              const tx = db.transaction("restaurants", "readwrite");
+              const store = tx.objectStore("restaurants");
+              store.put({id: restaurantId, data: restaurants});
+            });
+          return restaurants;//return json data
+        });
+      }).then(restaurants => {
+        return new Response(JSON.stringify(restaurants));
+      });
+    });
 }
 
-self.addEventListener('fetch', function (event) {
-  console.log(event.request);
-// var url= DBHelper.fetchURL;
-var url="dummyURL";//futureuse
-// console.log(url);
-//   // var url = DBHelper.DATABASE_URL; //url for which this strategy is to be applied
-//   // console.log("dbhelper url",url);
-//   if (event.request.url.indexOf(url) > -1) {
-//     event.respondWith(fetch(event.request)
-//             // .then(function (res) {
-//             // var clonedRes = res.clone();
-//             // clearAll('restaurants')
-//             // .then(function(){
-//             //   return clonedRes.json();
-//             // })
-//             // .then(function(data){
-//             //   for(var key in data){
-//             //     writeToIdb('restaurants', data[key]);
-//             //   }
-//             // });
-//               // return res;
-//         })
-//     );
+// handle non-ajax requests
+//cache API
+function fromCache(nonajaxreq) {
+  //first check in cache
+return caches.match(nonajaxreq)
+          .then(function (response) {
+            if (response) {
+              return response;//return cache data
+            } else {
+              return fetch(nonajaxreq)//make network req
+                .then(function (res) {
+                  return caches.open(dynamic_cache)
+                    .then(function (cache) {
+                      cache.put(nonajaxreq.url, res.clone());//sttore req,res
+                      return res;
+                    })
+                })
+                .catch(function (err) {
+                  return caches.open(static_cache)
+                    .then(function (cache) {
+                      if (nonajaxreq.headers.get('accept').includes('text/html')) {
+                        return cache.match('offline.html');
+                      }
+                    });
+                });
+            }
+          })
+}
 
-  if (event.request.url.indexOf(url) > -1) {  //if req url is same then only continue this strategy
-    event.respondWith(
-      caches.open(dynamic_cache) //cache dynamic content by dynamically caching
-        .then(function(cache){
-          return fetch(event.request) //return n/w response and then store in cache too
-          .then(function(netres){
-            cache.put(event.request, netres.clone());//make copy
-            return netres;
-          });
-        })
-
-    );
-
-    // cache only for basic static assets
-  } else if (isInArray(event.request.url, static_files)) {
-    event.respondWith(
-      caches.match(event.request)
-    );
-    // cache ,then n/w serve offline page
-    //dynamically caching visited content in a cache[dynamic_cache]
-  } else {
-    event.respondWith(
-      caches.match(event.request)
-        .then(function (response) {
-          if (response) {
-            return response;
-          } else {
-            return fetch(event.request)
-              .then(function (res) {
-                return caches.open(dynamic_cache)
-                  .then(function (cache) {
-                    cache.put(event.request.url, res.clone());
-                    return res;
-                  })
-              })
-              .catch(function (err) {
-                return caches.open(static_cache)
-                  .then(function (cache) {
-                    if (event.request.headers.get('accept').includes('text/html')) {
-                      return cache.match('offline.html');
-                    }
-                  });
-              });
-          }
-        })
-    );
+//handle/intercept all fetch events.
+self.addEventListener('fetch', event => {
+  const eventReq = event.request;
+  console.log("from sw,fetch event req:" ,eventReq);
+  const url = new URL(eventReq.url);
+  console.log("from sw:: requested url:" ,url);
+  if(url.port === '1337'){
+    event.respondWith(fromIndexedDB(url));
+  }else{
+    event.respondWith(fromCache(eventReq));
   }
 });
-
-// self.addEventListener('fetch', function(event) {
-//   event.respondWith(
-//     caches.match(event.request)
-//       .then(function(response) {
-//         if (response) {
-//           return response;
-//         } else {
-//           return fetch(event.request)
-//             .then(function(res) {
-//               return caches.open(dynamic_cache)
-//                 .then(function(cache) {
-//                   cache.put(event.request.url, res.clone());
-//                   return res;
-//                 })
-//             })
-//             .catch(function(err) {
-//               return caches.open(static_cache)
-//                 .then(function(cache) {
-//                   return cache.match('offline.html');
-//                 });
-//             });
-//         }
-//       })
-//   );
-// });
-// n/w then cache (store in cache)
-// self.addEventListener('fetch', function(event) {
-//   event.respondWith(
-//     fetch(event.request)
-//       .then(function(res) {
-//         return caches.open(dynamic_cache)
-//                 .then(function(cache) {
-//                   cache.put(event.request.url, res.clone());
-//                   return res;
-//                 })
-//       })
-//       .catch(function(err) {
-//         return caches.match(event.request);
-//       })
-//   );
-// });
-
-// Cache-only
-// self.addEventListener('fetch', function (event) {
-//   event.respondWith(
-//     caches.match(event.request)
-//   );
-// });
-
-// Network-only
-// self.addEventListener('fetch', function (event) {
-//   event.respondWith(
-//     fetch(event.request)
-//   );
-// });
-
-
-// Respond with fetch (triggered by application)
-// self.addEventListener("fetch", event => {
-//   console.log("sw is fetching something...", event);
-//   event.respondWith(
-//     caches.match(event.request)
-//       .then(response => {
-//         if (response) {
-//           return response;
-//         }else {
-//           // make server (fetch) request
-//           return fetch(event.request)
-//             .then(networkres => {
-//               // store req and res for future use
-//               return caches.open(dynamic_cache)
-//                 .then(cache => {
-//                   // res is consumed once, so make a clone
-//                   console.log("event request", event.request.url);
-//                   cache.put(event.request.url, networkres.clone());
-//                   return networkres;
-//                 })
-//             })
-//                 .catch(err => {
-//                   return caches.open(static_cache)
-//                   .then(cache => {
-//                     return cache.match("offline.html")
-//                   })
-//                 });
-//         }
-//       })
-//   );
-// });
