@@ -12,6 +12,17 @@ const source = require('vinyl-source-stream');
 const buffer = require('vinyl-buffer');
 const htmlMin = require('gulp-htmlmin');
 const log = require('gulplog');
+const browserSync = require('browser-sync').create();
+const reload = browserSync.reload;
+
+// browser-sync
+// gulp.task('browser-sync', ()=> {
+//   browserSync.init({
+//     server: {
+//       baseDir: "./"
+//     }
+//   })
+// })
 
 // ToDo-minifyjs
 
@@ -37,7 +48,9 @@ gulp.task('html', function() {
       removeScriptTypeAttributes: true,
       useShortDoctype: true
     }))
-    .pipe(gulp.dest('dist'));
+    .pipe(gulp.dest('dist'))
+    .pipe(browserSync.stream());
+
 });
 
 // minify css
@@ -49,6 +62,7 @@ gulp.task('minifyCSS', ()=> {
       .pipe(concat('app.min.css'))
       .pipe(cssMin())
       .pipe(gulp.dest('dist/css'))
+      .pipe(browserSync.stream());
 })
 
 // optimize images
@@ -68,9 +82,18 @@ gulp.task('images', function() {
 gulp.task('run', ['minifyCSS', 'images','html','manifest','sw']);
 
 gulp.task('watch',()=> {
+  browserSync.init({
+    server: {
+      baseDir: "./"
+    }
+  })
   gulp.watch('js/**/*.js', ['scripts']);
+  gulp.watch('js/**/*.js').on('change', reload)
   gulp.watch('css/**/*.css', ['minifyCSS']);
+  gulp.watch('js/**/*.css').on('change', reload)
   gulp.watch('*.html', ['html']);
+
+  browserSync.stream();
 })
 
 gulp.task('default', ['run','watch']);
