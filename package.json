@@ -17,6 +17,29 @@
   },
   "homepage": "https://github.com/sourybunny/mws-restaurant-stage-1#readme",
   "devDependencies": {
-    "gulp": "^3.9.1"
+    "@babel/core": "^7.0.1",
+    "@babel/preset-env": "^7.0.0",
+    "babel-core": "^6.26.3",
+    "babel-loader": "^8.0.2",
+    "babel-preset-env": "^1.7.0",
+    "babelify": "^10.0.0",
+    "browserify": "^16.2.2",
+    "gulp": "^3.9.1",
+    "gulp-autoprefixer": "^6.0.0",
+    "gulp-babel": "^8.0.0",
+    "gulp-concat": "^2.6.1",
+    "gulp-css": "^0.1.0",
+    "gulp-htmlmin": "^5.0.1",
+    "gulp-sourcemaps": "^2.6.4",
+    "gulp-uglify": "^3.0.1",
+    "gulp-webp": "^3.0.0",
+    "gulplog": "^1.0.0",
+    "vinyl-buffer": "^1.0.1",
+    "vinyl-source-stream": "^2.0.0"
+  },
+  "babel": {
+    "presets": [
+      "env"
+    ]
   }
 }
