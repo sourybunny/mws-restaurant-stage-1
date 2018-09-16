@@ -32,7 +32,7 @@ p {
 body {
 	background-color: #fdfdfd;
 	margin: 0;
-	position:relative;
+	position: relative;
 }
 
 /*style font for links and list items*/
@@ -126,7 +126,6 @@ nav h1 a {
   background-color: #eee;
   font-size: 17px;
   margin: 0;
-
 }
 
 /* Display list items side by side */
