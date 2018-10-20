@@ -2,15 +2,20 @@ importScripts('/js/idb.js');
 // importScripts('/js/dbhelper.js');
 
 // open/create idb.
-const dbPromise = idb.open('restaurants-store', 1, upgradeDB => {
+const dbPromise = idb.open('restaurants-store', 2, upgradeDB => {
   switch(upgradeDB.oldVersion) {
     case 0:
-      upgradeDB.createObjectStore(
-        'restaurants',
-        {
-          keyPath: 'id',
-        }
-      );
+    upgradeDB.createObjectStore("restaurants", {keyPath: "id"})
+    case 1:
+      {
+        const reviewsStore = upgradeDB.createObjectStore("reviews", {keyPath: "id"});
+        reviewsStore.createIndex("restaurant_id", "restaurant_id");
+      }
+    case 2:
+      upgradeDB.createObjectStore("pending", {
+        keyPath: "id",
+        autoIncrement: true
+      });
   }
 });
 
@@ -72,9 +77,10 @@ self.addEventListener("activate", event => {
 // ajaxurl:
 // locallhost:1337/restaurants/
 // localhost:1337/restaurants/id
-function fromIndexedDB(ajaxurl) {
-  let restaurantId = ajaxurl.pathname.split('/').slice(-1)[0];// get last item(restaurants/id)
-  restaurantId = restaurantId == 'restaurants' ? -1 : restaurantId; //store id
+function getRestaurantsfromIndexedDB(ajaxurl, id) {
+  // let restaurantId = ajaxurl.pathname.split('/').slice(-1)[0];// get last item(restaurants/id)
+  // restaurantId = restaurantId == 'restaurants' ? -1 : restaurantId; //store id
+  let restaurantId = id;
 // read from idb first
     return dbPromise.then(db => {
       const tx = db.transaction('restaurants',"readonly");
@@ -99,6 +105,38 @@ function fromIndexedDB(ajaxurl) {
         return new Response(JSON.stringify(restaurants));
       });
     });
+}
+
+function getReviewsfromIndexedDB(event, id){
+  event.respondWith(dbPromise.then(db => {
+    return db
+      .transaction("reviews")
+      .objectStore("reviews")
+      .index("restaurant_id")
+      .getAll(id);
+  }).then(idbreviews => {
+    console.log("idb reviews: ", idbreviews);
+    return (idbreviews.length && idbreviews) || fetch(event.request)
+      .then(fetchResponse => fetchResponse.json())
+      .then(fetchedReviews => {
+        return dbPromise.then(db => {
+          const tx = db.transaction("reviews", "readwrite");
+          const store = tx.objectStore("reviews");
+          fetchedReviews.forEach(review => {
+            store.put({id: review.id, "restaurant_id": review["restaurant_id"], data: review});
+          })
+          return fetchedReviews;
+        })
+      })
+  }).then(finalResponse => {
+    if (finalResponse[0].data) {
+      const formatResponse = finalResponse.map(review => review.data);
+      return new Response(JSON.stringify(formatResponse));
+    }
+    return new Response(JSON.stringify(finalResponse));
+  }).catch(error => {
+    return new Response("Error fetching data", {status: 500})
+  }))
 }
 
 // handle non-ajax requests
@@ -133,12 +171,36 @@ return caches.match(nonajaxreq)
 //handle/intercept all fetch events.
 self.addEventListener('fetch', event => {
   const eventReq = event.request;
-  console.log("from sw,fetch event req:" ,eventReq);
-  const url = new URL(eventReq.url);
-  console.log("from sw:: requested url:" ,url);
-  if(url.port === '1337'){
-    event.respondWith(fromIndexedDB(url));
+  const requestURL = new URL(eventReq.url);
+
+  if (requestURL.port === "1337") {
+
+      const splitURL = requestURL.pathname.split("/");
+      let id = requestURL.searchParams.get("restaurant_id") - 0;
+      if (!id) {
+        if (requestURL.pathname.indexOf("restaurants")) {
+          id = splitURL[splitURL.length - 1] === "restaurants"? "-1": splitURL[splitURL.length - 1];
+        } else {
+          id = requestURL.searchParams.get("restaurant_id");
+        }
+      }
+      handleAJAXEvent(event, id);
   }else{
     event.respondWith(fromCache(eventReq));
   }
 });
+
+
+const handleAJAXEvent = (event, id) => {
+  if (event.request.method !== "GET") {
+    console.log("handling ajax from sw::method type: ", event.request.method);
+    return;
+  }
+
+  if (event.request.url.indexOf("reviews") > -1) {
+    getReviewsfromIndexedDB(event, id);
+    return;
+  } else {
+    event.respondWith(getRestaurantsfromIndexedDB(event.request.url, id));
+  }
+}

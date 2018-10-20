@@ -1,3 +1,37 @@
+// import idb from "idb";
+// importScripts('/js/idb.js');
+// open/create idb.
+const dbPromise = idb.open('restaurants-store', 2, upgradeDB => {
+  switch(upgradeDB.oldVersion) {
+    case 0:
+    upgradeDB.createObjectStore("restaurants", {keyPath: "id"})
+    case 1:
+      {
+        const reviewsStore = upgradeDB.createObjectStore("reviews", {keyPath: "id"});
+        reviewsStore.createIndex("restaurant_id", "restaurant_id");
+      }
+    case 2:
+      upgradeDB.createObjectStore("pending", {
+        keyPath: "id",
+        autoIncrement: true
+      });
+  }
+});
+const dbP = idb.open("restaurants-store");
+
+window.addEventListener('online', () => {
+  console.log('online')
+  dbP.then(db => {
+    db.transaction('pending', 'readonly')
+      .objectStore('pending')
+      .count()
+      .then(requests => {
+        console.log('Pending requests', requests)
+        if (requests > 0) DBHelper.attemptCommitPendingReviews()
+      })
+  })
+})
+
 
 /**
  * Common database helper functions.
@@ -10,18 +44,170 @@ class DBHelper {
    */
   static get DATABASE_URL() {
     const port = 1337 ;// Change this to your server port
-    return `http://localhost:${port}/restaurants`;
+    return `http://localhost:${port}`;
   }
+
+
+// cache the pending review to idb when offline
+  static addPendingReviewToQueue(url, method, body) {
+    console.log("adding pending review to pending table in idb:",body);
+  dbP.then(db => {
+    db.transaction("pending", "readwrite")
+      .objectStore("pending")
+      .put({
+        data: {
+          url,
+          method,
+          body
+        }
+      })
+  })
+    
+}
+
+// loop to commit pending reviews
+static commitPendingReviews() {
+  DBHelper.attemptCommitPendingReviews(DBHelper.commitPendingReviews);
+}
+
+static attemptCommitPendingReviews(callback) {
+
+  dbP.then(db => {
+    if (!db.objectStoreNames.length) {
+      db.close();
+      return;
+    }
+
+    db.transaction("pending", "readwrite")
+      .objectStore("pending")
+      .openCursor()
+      .then(cursor => {
+        if (!cursor) {
+          return;
+        }
+
+        let url = cursor.value.data.url;
+        let method = cursor.value.data.method;
+        let body = cursor.value.data.body;
+        console.log("from pending, POSTing to server:",url,method,body);
+
+      // delete any bad review that has missing info
+        if ((!url || !method) || (method === "POST" && !body)) {
+          cursor
+            .delete()
+            .then(callback());
+          return;
+        };
+
+        const postReview = {
+          body: JSON.stringify(body),
+          method: method
+        }
+
+        console.log("postReview from pending: ", postReview);
+        // make a post request to url:localhost:1337/reviews/
+        fetch(url, postReview)
+          .then(response => {
+            console.log(response);
+        // if resp not ok, return
+          if (!response.ok && !response.redirected) {
+            return;
+          }
+        })
+          .then(() => {
+            console.log("posted to server from pending");
+            db.transaction("pending", "readwrite")
+              .objectStore("pending")
+              .openCursor()
+              .then(cursor => {
+                cursor
+                  .delete()
+                  .then(() => {
+                    callback();
+                  })
+              })
+            console.log("deleted pending review from pending table");
+          })
+      })
+      .catch(error => {
+        console.log("Error reading cursor");
+        return;
+      })
+  })
+}
+
+  /**
+ * Update reviews with the new review in idb.
+ */
+static addNewReviewToIdb(restaurantId, review) {
+  return dbPromise.then((db) => {
+    if (!db) return;
+    let tx = db.transaction('reviews', 'readwrite');
+    let reviewsStore = tx.objectStore('reviews');
+    reviewsStore.put({id: Date.now(),
+        "restaurant_id": restaurantId,
+        data: review});
+    tx.complete;
+    console.log("new review is cached to idb")
+  });
+}
+
+  static saveNewReview(id, bodyObj, callback) {
+    // let body = {
+    //   restaurant_id: id,
+    //   name: bodyObj.name,
+    //   rating: bodyObj.rating,
+    //   comments: bodyObj.comments,
+    //   createdAt: Date.now(),
+    //   updatedAt: Date.now()
+    // }
+    const url = DBHelper.DATABASE_URL + "/reviews/";
+    const method = "POST";
+    let body = bodyObj;
+    const btn = document.querySelector('.review-submit');
+    btn.onclick = null;//disable double click till review is saved
+    console.log("adding new review to idb: ", body);
+    DBHelper.addNewReviewToIdb(id, body);
+    // if online, send review to server else, queue the new review.
+    if (navigator.onLine) {
+      DBHelper.sendReviewToDatabase(url, 'POST', body)
+    } else DBHelper.addPendingReviewToQueue(url, 'POST', body)
+      callback(null, null);
+    }
+
+//post new review to server if already online.
+
+    static sendReviewToDatabase (url = '', method, body) {
+
+        fetch(url, {
+          method: 'post',
+          body: JSON.stringify(body)
+        })
+          .then(response => {
+            console.log('online: POSTing new review to server: ', response)
+          })
+          .catch(err => console.log('post to server failed', err))
+      }
 
   /**
    * Fetch all restaurants.
    */
   static fetchRestaurants(callback) {
-    fetch(DBHelper.DATABASE_URL)
+    fetch(DBHelper.DATABASE_URL + '/restaurants')
       .then(response => {
         return response.json();
       })
       .then(restaurants => callback(null, restaurants))
+      .catch(err => callback(err, null));
+  }
+
+// fetch reviews for a specific restaurant
+  static fetchRestaurantReviewsById(id, callback) {
+
+    const fetchURL = DBHelper.DATABASE_URL + `/reviews/?restaurant_id=${id}`;
+    fetch(fetchURL)
+      .then(response => response.json())
+      .then(data => callback(null, data))
       .catch(err => callback(err, null));
   }
 

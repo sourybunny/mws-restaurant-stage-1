@@ -312,7 +312,7 @@ nav h1 a {
   color: #233;
   font-family: Arial,sans-serif;
   font-size: 2.0em;
-  font-weight: 200;
+  font-weight: 400;
   letter-spacing: 0;
   margin: 15px 0 30px;
   text-transform: uppercase;
@@ -363,9 +363,10 @@ nav h1 a {
 #reviews-container h2 {
   color: #233;
   font-size: 2.4em;
-  font-weight: 300;
-  letter-spacing: -1px;
+  font-weight: 400;
+  /* letter-spacing: 1px; */
   padding-bottom: 1pt;
+  margin-top: 50px;
 }
 
 #reviews-list {
@@ -382,34 +383,97 @@ nav h1 a {
   overflow: hidden;
   padding: 20px 20px;
   position: relative;
+  box-shadow: 2px 2px 1px 0 rgba(55, 60, 69, 0.1);
   /* width: 85%; */
 }
 
 #reviews-list li p {
   margin: 5px 0 5px;
+  /* font-size: 1.0em; */
 }
 
-#reviews-list li p:nth-child(1) {
+#reviews-list li .name {
   width: 50%;
   font-size: 1.2em;
   display: inline-block;
 }
 
-#reviews-list li p:nth-child(2) {
+#reviews-list li .date {
   width: 50%;
   display: inline-block;
   font-size: 1.0em;
 	text-align: right;
 }
 
-#reviews-list li p:nth-child(3) {
+#reviews-list li .rating {
   font-weight: bold;
+  /* display: inline-block; */
+  /* float: right; */
   text-align: right;
 	font-size: 1.1em;
 }
 
-#reviews-list li p:nth-child(4) {
-	font-size: 0.9em;
+#reviews-list li .comment {
+	font-size: 1.2em;
+
+}
+
+.review-form {
+  display: flex;
+  flex-wrap: wrap;
+  /* justify-content: center; */
+}
+ .form-input {
+  padding: 14px;
+  margin: 8px;
+  border: none;
+  font-size: 1.1em;
+  box-shadow: 2px 3px 2px 0 rgba(55, 60, 69, 0.2);
+}
+.form-input:focus{
+  box-shadow: none;
+}
+ .review-name-rating {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+ .reviewer-name {
+  width: 55%;
+}
+.label-text {
+  font-size: 1.2em;
+  margin: 8px;
+  float:left;
+}
+
+ .reviewer-rating {
+  width: 20%;
+}
+ .reviewer-comments {
+  width: 100%;
+  height: 90px;
+  background: #fff;
+  color: #233;
+}
+ .review-submit {
+  width: 25%;
+  margin: 8px;
+  padding: 15px;
+  border: none;
+  background: #233;
+  color: #fff;
+  text-decoration: none;
+  letter-spacing: 3px;
+  cursor: pointer;
+  box-shadow: 3px 6px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+}
+ .review-submit:hover {
+  box-shadow: 0 0 10px 3px rgba(255, 255, 255, 0.8) !important;
+}
+ .review-submit:focus {
+  outline: 0 !important;
+  box-shadow: 0 0 10px 3px rgba(255, 255, 255, 0.8);
 }
 
 #restaurant-hours {
@@ -452,12 +516,23 @@ nav h1 a {
   }
 
   #reviews-container h2 {
-    font-size: 1.3em;
+    font-size: 1.5em;
     text-align: center;
   }
 
   .inside #breadcrumb {
     font-size: 0.8em;
+  }
+
+  .review-form {
+    justify-content: center;
+  }
+
+  .review-submit {
+    width: 50%;
+  }
+  .review-name-rating {
+    flex-direction: column;
   }
 }
 

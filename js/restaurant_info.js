@@ -1,11 +1,20 @@
 let restaurant;
 var newMap;
+let reviewerName;
+let reviewerRating;
+let reviewerComments;
+let reviewSubmit;
+
+// let form;
 
 /**
  * Initialize map as soon as the page is loaded.
  */
 document.addEventListener('DOMContentLoaded', (event) => {
   initMap();
+  reviewSubmit = document.querySelector('.review-submit');
+  reviewSubmit.addEventListener('click', saveReview);
+
 });
 
 /**
@@ -115,7 +124,7 @@ let fillRestaurantHTML = (restaurant = self.restaurant) => {
     fillRestaurantHoursHTML();
   }
   // fill reviews
-  fillReviewsHTML();
+  DBHelper.fetchRestaurantReviewsById(restaurant.id, fillReviewsHTML)
 }
 
 /**
@@ -141,7 +150,11 @@ let fillRestaurantHoursHTML = (operatingHours = self.restaurant.operating_hours)
 /**
  * Create all reviews HTML and add them to the webpage.
  */
-let fillReviewsHTML = (reviews = self.restaurant.reviews) => {
+let fillReviewsHTML = (err, reviews) => {
+  self.restaurant.reviews = reviews;
+  if (err) {
+   console.log("Error retrieving restaurant review: ", err);
+ }
   const container = document.getElementById('reviews-container');
   const title = document.createElement('h2');
   title.innerHTML = 'Reviews';
@@ -167,24 +180,64 @@ let fillReviewsHTML = (reviews = self.restaurant.reviews) => {
 let createReviewHTML = (review) => {
   const li = document.createElement('li');
   const name = document.createElement('p');
+  name.className = 'name';
   name.innerHTML = review.name;
   li.appendChild(name);
   li.setAttribute('tabindex','0');
 
   const date = document.createElement('p');
-  date.innerHTML = review.date;
+  date.className = 'date';
+  const updatedCommentDate = new Date(review.updatedAt);
+  date.innerHTML = updatedCommentDate.toLocaleDateString();
   li.appendChild(date);
 
   const rating = document.createElement('p');
+  rating.className = 'rating';
   rating.innerHTML = `Rating: ${review.rating}`;
   li.appendChild(rating);
 
   const comments = document.createElement('p');
+  comments.className = 'comment';
   comments.innerHTML = review.comments;
   li.appendChild(comments);
 
   return li;
 }
+
+//Get Reviewer rating,
+document.querySelector('.reviewer-rating').addEventListener('change', function(e) {
+ reviewerRating = e.target.value;
+
+});
+// save review entered by user
+const saveReview = (e) => {
+  e.preventDefault();
+   reviewerName = document.querySelector('.reviewer-name').value;
+   reviewerComments = document.querySelector('.reviewer-comments').value;
+   reviewSubmit = null;
+   if(reviewerName && reviewerComments && reviewerRating){
+   const review = {
+    "restaurant_id": self.restaurant.id,
+    "name": reviewerName,
+    "rating": reviewerRating,
+    "comments": reviewerComments,
+    "createdAt": new Date().toISOString(),
+    "updatedAt": new Date().toISOString()
+  };
+  const ul = document.getElementById('reviews-list');
+  ul.appendChild(createReviewHTML(review));//update UI
+  DBHelper.saveNewReview(self.restaurant.id, review, (error, review) => {
+    if (error) {
+      console.log("Error saving review")
+    }
+    document.querySelector('.review-form').reset();
+  });
+}else{
+  alert("fill all the fields");
+  console.log("please fill all the fields")
+}
+};
+
 
 /**
  * Add restaurant name to the breadcrumb navigation menu
