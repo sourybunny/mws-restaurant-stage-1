@@ -62,7 +62,7 @@ class DBHelper {
         }
       })
   })
-    
+
 }
 
 // loop to commit pending reviews
@@ -189,6 +189,66 @@ static addNewReviewToIdb(restaurantId, review) {
           .catch(err => console.log('post to server failed', err))
       }
 
+  static SaveFavoriteRestaurant(resId, newState) {
+    const url = `${DBHelper.DATABASE_URL}/restaurants/${resId}/?is_favorite=${newState}`;
+    const method = 'PUT';
+    const favBtn = document.getElementById("fav-res"+resId);
+    // favBtn.onclick = null;
+    console.log("favBtn:",favBtn);
+    console.log("updating fav to idb: ",resId , newState);
+    // updateUI
+    if(newState=="true"){
+      favBtn.innerHTML = '&#10084;';
+    }else {
+      favBtn.innerHTML = '&#9825;';
+    }
+    DBHelper.UpdateFavoriteRestaurantToIdb(resId, newState);
+
+    if (navigator.onLine) {
+      console.log("online: updating fav")
+      DBHelper.UpdateFavoriteToDatabase(url, method)
+    } else {
+      DBHelper.addPendingReviewToQueue(url, method, null)
+    console.log("offline, adding fav to pending");
+  }
+      // callback(null, {resId, value: newState});
+
+  }
+
+  static UpdateFavoriteRestaurantToIdb(resId, newState) {
+    dbP.then(db => {
+      const tx = db.transaction("restaurants", "readwrite");
+      const oldresdata = tx.objectStore("restaurants")
+                          .get("-1")
+                          .then(data => {
+                            // console.log(data);
+                            if(!data){
+                              console.log("idb restaurants is empty");
+                              return;
+                            }
+      const resdata = data.data;
+      console.log(resdata);
+      const restaurantToUpdate = resdata.filter(restaurant => restaurant.id === resId)[0];
+      console.log(" restaurant to update in idb is: ",restaurantToUpdate);
+      // update restaurantToUpdate
+      restaurantToUpdate.is_favorite = newState;
+      // data is now updated with new data
+      dbP.then(db => {
+          const tx = db.transaction("restaurants", "readwrite");
+          tx
+            .objectStore("restaurants")
+            .put({id: "-1", data: resdata});
+          return tx.complete;
+        })
+                          })
+    })
+  }
+  static UpdateFavoriteToDatabase(url, method){
+    return fetch(url, {
+      method: method
+    });
+    console.log("updated fav to db")
+  }
   /**
    * Fetch all restaurants.
    */

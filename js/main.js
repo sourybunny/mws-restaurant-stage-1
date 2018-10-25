@@ -3,6 +3,7 @@ let restaurants,
   cuisines
 var newMap
 var markers = []
+// const favorite = document.createElement('div');
 
 /**
  * Fetch neighborhoods and cuisines as soon as the page is loaded.
@@ -212,13 +213,16 @@ let createRestaurantHTML = (restaurant) => {
                       ? true : false;
 
   favorite.className = 'favorite-button';
+  favorite.id = "fav-res"+restaurant.id;
   if (isFavorite) {
     favorite.innerHTML = '&#10084;';
   } else if (!isFavorite) {
     favorite.innerHTML = '&#9825;';
     // console.log(favorite);
   }
-  favorite.addEventListener('click', toggleFavoriteRestaurant);
+  favorite.onclick = (event) => {
+    UpdateFavoriteRestaurant(restaurant.id, !restaurant.is_favorite);
+  };
 
   const buttonSection = document.createElement('section');
   buttonSection.className = 'card-buttons';
@@ -229,14 +233,24 @@ let createRestaurantHTML = (restaurant) => {
 
   return li
 }
-const toggleFavoriteRestaurant = (e) => {
-  // console.log(favorite);
-  // to be changed
-  console.log(e);
-  e.target.innerHTML = '★';
-  //update restaurants idb
-  //update database
+const UpdateFavoriteRestaurant = (resID, favState) => {
+  // update UI
+  console.log("resID from mainjs",resID)
+  const favresID = document.getElementById("fav-res"+resID);
+  // let fav = document.querySelector("")
+  console.log("clicked favresID",favresID);
+  const restaurant = self
+    .restaurants
+    .filter(r => r.id === resID)[0];
+  if (!restaurant)
+    return;
+  restaurant["is_favorite"] = favState;
 
+  favresID.onclick = (event) => {
+    UpdateFavoriteRestaurant(restaurant.id, !restaurant.is_favorite);
+  };
+  //update database
+  DBHelper.SaveFavoriteRestaurant(resID, favState.toString());
 }
 /**
  * Add markers for current restaurants to the map.
