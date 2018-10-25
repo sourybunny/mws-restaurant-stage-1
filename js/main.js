@@ -206,6 +206,7 @@ let createRestaurantHTML = (restaurant) => {
   more.setAttribute('aria-label', `More details about ${restaurant.name}`)
   // li.append(more)
   const favorite = document.createElement('div');
+  favorite.setAttribute('aria-label', `make ${restaurant.name} your favorite`);
   const isFavorite = (restaurant["is_favorite"] && restaurant["is_favorite"].toString() === "true")
                       ? true : false;
 
