@@ -205,9 +205,6 @@ let createRestaurantHTML = (restaurant) => {
   more.href = DBHelper.urlForRestaurant(restaurant);
   more.setAttribute('aria-label', `More details about ${restaurant.name}`)
   // li.append(more)
-
-  console.log("is_favorite: ", restaurant["is_favorite"]);
-
   const favorite = document.createElement('div');
   const isFavorite = (restaurant["is_favorite"] && restaurant["is_favorite"].toString() === "true")
                       ? true : false;
@@ -234,11 +231,9 @@ let createRestaurantHTML = (restaurant) => {
   return li
 }
 const UpdateFavoriteRestaurant = (resID, favState) => {
-  // update UI
-  console.log("resID from mainjs",resID)
+  // console.log("resID from mainjs",resID)
   const favresID = document.getElementById("fav-res"+resID);
-  // let fav = document.querySelector("")
-  console.log("clicked favresID",favresID);
+  // console.log("clicked favresID",favresID);
   const restaurant = self
     .restaurants
     .filter(r => r.id === resID)[0];
